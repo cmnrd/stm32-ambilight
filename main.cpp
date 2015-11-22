@@ -25,51 +25,135 @@
 
 #include <xpcc/architecture/platform.hpp>
 #include <xpcc/io/iostream.hpp>
+#include <xpcc/processing.hpp>
+#include <xpcc/ui/button_group.hpp>
 
 #include "ambilight.hpp"
 #include "rgbled.hpp"
 #include "mono.hpp"
 
+enum class Mode
+{
+	MONO,
+	ALL_ON,
+	ALL_OFF,
+};
+
+void setLeds(Mode mode)
+{
+	switch (mode)
+	{
+	case Mode::MONO:
+		Board::LedGreen::set();
+		Board::LedRed::reset();
+		Board::LedBlue::reset();
+		Board::LedOrange::reset();
+		break;
+	case Mode::ALL_OFF:
+		Board::LedGreen::reset();
+		Board::LedRed::reset();
+		Board::LedBlue::reset();
+		Board::LedOrange::reset();
+		break;
+	case Mode::ALL_ON:
+		Board::LedGreen::reset();
+		Board::LedRed::reset();
+		Board::LedBlue::set();
+		Board::LedOrange::reset();
+		break;
+	default:
+		Board::LedGreen::reset();
+		Board::LedRed::reset();
+		Board::LedBlue::reset();
+		Board::LedOrange::reset();
+		break;
+	}
+}
+
 MAIN_FUNCTION
 {
 	Board::initialize();
-
-	Board::LedRed::set();
-	Board::LedRed::reset();
 
 	// Enable USART 1
 	GpioOutputA9::connect(Usart1::Tx);
 	GpioInputA10::connect(Usart1::Rx, Gpio::InputType::PullUp);
 	Usart1::initialize<Board::systemClock, 921600>(12);
 
-	// Enable USART 2
-	GpioOutputA2::connect(Usart2::Tx);
-	GpioInputA3::connect(Usart2::Rx, Gpio::InputType::PullUp);
-	Usart2::initialize<Board::systemClock, 9600>(12);
-
 	GpioB11::connect(I2cMaster2::Sda);
 	GpioB10::connect(I2cMaster2::Scl);
 	I2cMaster2::initialize<Board::systemClock, 560000>();
-
-	// Create a IOStream for complex formatting tasks
-	xpcc::IODeviceWrapper< Usart2, xpcc::IOBuffer::BlockIfFull > device;
-	xpcc::IOStream stream(device);
-
-	stream << "Hello World!\r\n";
 
 	RgbLed leds[30] = {};
     auto ambilight = Ambilight<I2cMaster2>(leds);
 	auto mono = Mono<Usart1>(leds);
 
+	Mode mode = Mode::MONO;
+
+	// use a ButtonGroup to debounce the key
+	auto button = xpcc::ButtonGroup<uint8_t>(1);
+
+	xpcc::ShortPeriodicTimer timer(5);
+
+	setLeds(mode);
+
 	while (1)
 	{
-		Board::LedGreen::set();
-		Board::LedRed::set();
+		// update button periodically for debouncing
+		if (timer.execute())
+			button.update(Board::Button::read() ? 0 : 1);
 
-		ambilight.run();
-		Board::LedGreen::reset();
-		mono.run();
-		Board::LedRed::reset();
+		if (button.isPressed(1))
+		{
+			switch (mode)
+			{
+			case Mode::MONO:
+				mode = Mode::ALL_ON;
+
+				for (int i = 0; i < 30; i++)
+				{
+					leds[i].setRed(0xffffff);
+					leds[i].setGreen(0xffffff);
+					leds[i].setBlue(0xffffff);
+				}
+
+				break;
+			case Mode::ALL_ON:
+				mode = Mode::ALL_OFF;
+
+				for (int i = 0; i < 30; i++)
+				{
+					leds[i].setRed(0x0);
+					leds[i].setGreen(0x0);
+					leds[i].setBlue(0x0);
+				}
+
+				break;
+			case Mode::ALL_OFF:
+				mode = Mode::MONO;
+
+				break;
+			default:
+				break;
+			}
+
+			setLeds(mode);
+		}
+
+		switch (mode)
+		{
+		case Mode::MONO:
+			ambilight.run();
+			mono.run();
+			break;
+		case Mode::ALL_ON:
+			ambilight.run();
+			break;
+		case Mode::ALL_OFF:
+			ambilight.run();
+			break;
+		default:
+			break;
+		}
 	}
 
 	return 0;
