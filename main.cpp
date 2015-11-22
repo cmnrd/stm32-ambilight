@@ -27,9 +27,9 @@
 #include <xpcc/io/iostream.hpp>
 #include <xpcc/processing.hpp>
 #include <xpcc/ui/button_group.hpp>
+#include <xpcc/ui/color.hpp>
 
 #include "ambilight.hpp"
-#include "rgbled.hpp"
 #include "mono.hpp"
 
 enum class Mode
@@ -83,7 +83,7 @@ MAIN_FUNCTION
 	GpioB10::connect(I2cMaster2::Scl);
 	I2cMaster2::initialize<Board::systemClock, 560000>();
 
-	RgbLed leds[30] = {};
+	xpcc::color::RgbT<uint16_t> leds[30];
     auto ambilight = Ambilight<I2cMaster2>(leds);
 	auto mono = Mono<Usart1>(leds);
 
@@ -111,9 +111,9 @@ MAIN_FUNCTION
 
 				for (int i = 0; i < 30; i++)
 				{
-					leds[i].setRed(0xffffff);
-					leds[i].setGreen(0xffffff);
-					leds[i].setBlue(0xffffff);
+					leds[i].red = 0xfff;
+					leds[i].green = 0xfff;
+					leds[i].blue = 0xfff;
 				}
 
 				break;
@@ -122,9 +122,9 @@ MAIN_FUNCTION
 
 				for (int i = 0; i < 30; i++)
 				{
-					leds[i].setRed(0x0);
-					leds[i].setGreen(0x0);
-					leds[i].setBlue(0x0);
+					leds[i].red = 0x0;
+					leds[i].green = 0x0;
+					leds[i].blue = 0x0;
 				}
 
 				break;

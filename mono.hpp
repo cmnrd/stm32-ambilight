@@ -24,28 +24,26 @@
 #pragma once
 
 #include <xpcc/architecture/platform.hpp>
-#include <xpcc/processing/protothread/protothread.hpp>
-
-#include "rgbled.hpp"
-
-#include "../../xpcc/examples/stm32f4_discovery/stm32f4_discovery.hpp"
+#include <xpcc/ui/color.hpp>
 
 template<typename Uart>
 class Mono : public xpcc::pt::Protothread
 {
   private:
 
-    RgbLed* leds;
+      xpcc::color::RgbT<uint16_t>* leds;
 
   public:
 
-    Mono(RgbLed* _leds) : leds(_leds) { }
+    Mono(xpcc::color::RgbT<uint16_t>* _leds) : leds(_leds) { }
 
     bool run()
     {
         static uint8_t led = 0;
 
         static uint8_t data;
+
+        static uint16_t value = 0;
 
         PT_BEGIN();
 
@@ -76,23 +74,27 @@ class Mono : public xpcc::pt::Protothread
             // read led values
             for (led = 0; led < 30; led++)
             {
-                Board::LedGreen::set();
+                value = 0;
                 PT_WAIT_UNTIL(Uart::read(data));
-                leds[led].setRedHigh(data);
+                value = data << 8;
                 PT_WAIT_UNTIL(Uart::read(data));
-                leds[led].setRedLow(data);
+                value |= data;
+                leds[led].red = value;
 
+                value = 0;
                 PT_WAIT_UNTIL(Uart::read(data));
-                leds[led].setGreenHigh(data);
+                value = data << 8;
                 PT_WAIT_UNTIL(Uart::read(data));
-                leds[led].setGreenLow(data);
+                value |= data;
+                leds[led].green = value;
 
+                value = 0;
                 PT_WAIT_UNTIL(Uart::read(data));
-                leds[led].setBlueHigh(data);
+                value = data << 8;
                 PT_WAIT_UNTIL(Uart::read(data));
-                leds[led].setBlueLow(data);
+                value |= data;
+                leds[led].blue = value;
             }
-
         }
 
         PT_END();

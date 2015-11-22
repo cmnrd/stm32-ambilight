@@ -26,8 +26,7 @@
 #include <xpcc/architecture/platform.hpp>
 #include <xpcc/driver/pwm/pca9685.hpp>
 #include <xpcc/processing/protothread/protothread.hpp>
-
-#include "rgbled.hpp"
+#include <xpcc/ui/color.hpp>
 
 template<class I2cMaster>
 class Ambilight : public xpcc::pt::Protothread
@@ -49,11 +48,11 @@ class Ambilight : public xpcc::pt::Protothread
           {controllerBaseAddress + 4},
           {controllerBaseAddress + 5} };
 
-    RgbLed* leds;
+    xpcc::color::RgbT<uint16_t>* leds;
 
   public:
 
-    Ambilight(RgbLed* _leds) : leds(_leds) {}
+    Ambilight(xpcc::color::RgbT<uint16_t>* _leds) : leds(_leds) {}
 
     uint8_t getController(uint8_t led) { return led / numControllerRgbLeds; }
 
@@ -102,13 +101,13 @@ class Ambilight : public xpcc::pt::Protothread
                 c = getController(led);
 
                 channel = getRedChannel(led);
-                PT_CALL(controller[c].setChannel(channel, leds[led].getRed()));
+                PT_CALL(controller[c].setChannel(channel, leds[led].red));
 
                 channel = getGreenChannel(led);
-                PT_CALL(controller[c].setChannel(channel, leds[led].getGreen()));
+                PT_CALL(controller[c].setChannel(channel, leds[led].green));
 
                 channel = getBlueChannel(led);
-                PT_CALL(controller[c].setChannel(channel, leds[led].getBlue()));
+                PT_CALL(controller[c].setChannel(channel, leds[led].blue));
             }
         }
 
